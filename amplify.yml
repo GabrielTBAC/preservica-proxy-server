@@ -1,0 +1,10 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm install
+  artifacts:
+    baseDirectory: /
+    files:
+      - '**/*'
