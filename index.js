@@ -10,30 +10,30 @@ const app = express();
 const port = process.env.PORT || 3001;
 const preservicaApiUrl = process.env.PRESERVICA_API_URL || 'https://lac.preservica.com/api';
 
-// Comprehensive CORS configuration
-const corsOptions = {
-  origin: [
-    'https://master.d1pp5clznit78t.amplifyapp.com', // Your React app's domain
-    'http://localhost:3000', // Local development
-    /\.amplifyapp\.com$/ // Matches all Amplify app domains
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Accept', 
-    'Origin'
-  ],
-  credentials: true,
-  maxAge: 3600
-};
+// Extremely permissive CORS configuration
+app.use((req, res, next) => {
+  // Allow from any origin
+  res.header('Access-Control-Allow-Origin', '*');
+  
+  // Allow all HTTP methods
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  
+  // Allow these headers
+  res.header('Access-Control-Allow-Headers', 
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token'
+  );
+  
+  // Allow credentials if needed
+  res.header('Access-Control-Allow-Credentials', true);
 
-// Apply CORS middleware before proxy
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
+  // Intercept OPTIONS method
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  else {
+    return next();
+  }
+});
 
 // Simple health check endpoint
 app.get('/health', (req, res) => {
@@ -52,21 +52,17 @@ app.use('/api', createProxyMiddleware({
   onProxyReq: (proxyReq, req, res) => {
     console.log(`Proxying ${req.method} request to: ${req.path}`);
     
-    // Optional: Add any additional headers if needed
-    // proxyReq.setHeader('Custom-Header', 'value');
+    // Optional: Log full request details for debugging
+    console.log('Request headers:', req.headers);
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Add CORS headers to the proxied response
-    res.set('Access-Control-Allow-Origin', req.get('Origin') || '*');
-    res.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.set('Access-Control-Allow-Credentials', 'true');
-
+    // Add additional logging for response
     console.log(`Received ${proxyRes.statusCode} from proxy`);
+    console.log('Response headers:', proxyRes.headers);
   },
   onError: (err, req, res) => {
     console.error('Proxy error:', err);
-    res.status(500).send('Proxy error: ' + err.message);
+    res.status(500).send('Proxy error: ' + JSON.stringify(err));
   }
 }));
 
